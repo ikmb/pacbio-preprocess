@@ -33,6 +33,9 @@ if (params.help){
         exit 0
 }
 
+// Barcode file
+barcodes = file("$baseDir/assets/Sequel_16_Barcodes_v3.fasta")
+
 // Enables splitting of CCS read generation into 10 parallel processes
 def chunks = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
 
@@ -45,6 +48,7 @@ if (!params.bam) {
 		.map { b -> [ file(b).getBaseName(), file(b), file("${b}.pbi") ] }
 }
 
+// requested generation of HiFi reads
 if (params.hifi) {
 
 	process BamToCCS {
@@ -56,8 +60,6 @@ if (params.hifi) {
 			}
 
 		scratch true 
-
-		label 'pbccs'
 
 		input:
 		set val(sample),file(bam),file(bam_index) from bamFile
@@ -85,8 +87,6 @@ if (params.hifi) {
 
 	        publishDir "${params.outdir}/${sample}/CCS", mode: 'copy'
 
-		label 'pbbam'
-
 		input:
 		set val(sample),file(read_chunks) from ReadChunksGrouped
 
@@ -105,10 +105,7 @@ if (params.hifi) {
 
 	process GetHiFiReads {
 
-
-                publishDir "${params.outdir}/${sample}/HIFI", mode: 'copy'
-
-		label 'pbhifi'
+                publishDir "${params.outdir}/${sample}/HiFi", mode: 'copy'
 
 		input:
 		set val(sample),file(bam),file(pbi) from mergedReads
@@ -127,7 +124,7 @@ if (params.hifi) {
 	}
 
 } else {
-	HifiBam = bamFile
+	HiFiBam = bamFile
 }
 
 if (params.demux) {
@@ -136,18 +133,21 @@ if (params.demux) {
 
 		publishDir "${params.outdir}/${sample}/Demux", mode: 'copy'
 
-		label 'pblima'
-
 		input:
 		set val(sample),file(bam),file(pbi) from HiFiBam
 
 		output:
 		set val(sample),file("*-*.bam") into final_bams
+		set val(sample),file("*.lima.*") into lima_reports
 
 		script:
+		def options = ""
+		if (params.hifi) {
+			options = "--ccs --min-score 80"
+		}
 
 		"""
-			lima 
+			lima $bam $barcodes $demux --same $options 
 		"""
 
 	}
@@ -155,4 +155,41 @@ if (params.demux) {
 } else {
 
 	final_bams = HiFiBam
+}
+
+if (params.qc) {
+
+	process bam2fasta {
+
+		input:
+		set val(sample),file(bam),file(pbi) from HiFiBam				
+
+		output:
+		set val(sample),file(fasta) into fasta_reads
+
+		script:
+		fasta = bam.getBaseName() + ".fasta.gz"
+
+		"""
+			bam2fasta -o ${bam.getBaseName()} $bam
+		"""
+		
+	}
+
+	process nanoplot {
+
+        	publishDir "${params.outdir}/${sample}/QC", mode: 'copy'
+
+	        input:
+        	set val(sample),file(fasta) from fasta_reads
+
+	        output:
+        	file("nanoplot")
+
+	        script:
+
+        	"""
+                	NanoPlot -t ${task.cpus} -o nanoplot --fasta $fasta
+	        """
+	}
 }
