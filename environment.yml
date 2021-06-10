@@ -8,7 +8,7 @@ channels:
 dependencies:
   - bioconda::extracthifi=1.0.0
   - bioconda::pbbam
-  --bioconda::bam2fastx
+  - bioconda::bam2fastx
   - bioconda::pbccs=6.0.0
   - bioconda::lima=2.0.0
   - bioconda::nanoplot=1.38.0
