@@ -1,0 +1,15 @@
+# You can use this file to create a conda environment for this pipeline:
+#   conda env create -f environment.yml
+name: pacbio-preprocess-1.0
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - bioconda::extracthifi=1.0.0
+  - bioconda::pbbam
+  - bioconda::pbccs=6.0.0
+  - bioconda::lima=2.0.0
+  - bioconda::nanoplot=1.38.0
+  - bioconda::fastqc
+  - bioconda::multiqc=1.9
