@@ -42,10 +42,11 @@ def chunks = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
 if (!params.bam) {
 	exit 1, "Must provide a BAM movie file (--bam)"
 } else {
-	bamFile = Channel
+	Channel
 		.fromPath(params.bam)
 		.ifEmpty { exit 1, "Could not find an input bam file" }
 		.map { b -> [ file(b).getBaseName(), file(b), file("${b}.pbi") ] }
+		.into { bamFile; bamQC }
 }
 
 // requested generation of HiFi reads
@@ -58,8 +59,6 @@ if (params.hifi) {
 				if( filename.indexOf("report.txt") > 0 ) filename
 				else null
 			}
-
-		scratch true 
 
 		input:
 		set val(sample),file(bam),file(bam_index) from bamFile
@@ -76,7 +75,7 @@ if (params.hifi) {
 
 		"""
 			ccs $bam $reads --min-passes 3 --chunk $chunk/10 -j ${task.cpus}
-			mv ccs_report.txt $report
+			mv *ccs_report.txt $report
 		"""
 
 	}
@@ -85,7 +84,7 @@ if (params.hifi) {
 
 	process CcsMerge {
 
-	        publishDir "${params.outdir}/${sample}/CCS", mode: 'copy'
+	        // publishDir "${params.outdir}/${sample}/CCS", mode: 'copy'
 
 		input:
 		set val(sample),file(read_chunks) from ReadChunksGrouped
@@ -118,7 +117,8 @@ if (params.hifi) {
 		hifi_pbi = hifi + ".pbi"
 
 		"""
-			exctracthifi $bam $hifi
+			extracthifi $bam $hifi
+			pbindex $hifi
 		"""
 
 	}
@@ -145,9 +145,10 @@ if (params.demux) {
 		if (params.hifi) {
 			options = "--ccs --min-score 80"
 		}
+		demux = bam.getBaseName() + ".demux.bam"
 
 		"""
-			lima $bam $barcodes $demux --same $options 
+			lima $bam $barcodes $demux --same $options --split
 		"""
 
 	}
@@ -162,7 +163,7 @@ if (params.qc) {
 	process bam2fasta {
 
 		input:
-		set val(sample),file(bam),file(pbi) from HiFiBam				
+		set val(sample),file(bam),file(pbi) from bamQC
 
 		output:
 		set val(sample),file(fasta) into fasta_reads
