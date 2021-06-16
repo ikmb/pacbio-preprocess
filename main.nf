@@ -72,9 +72,13 @@ if (params.hifi) {
 		script:
 		reads = bam.getBaseName() + "." + chunk + ".ccs.bam"
 		report = bam.getBaseName() + "." + chunk + ".ccs.report.txt"
+		options =""
+		if (params.max_length) {
+			options = "--max-length=${params.max_length}"
+		}
 
 		"""
-			ccs $bam $reads --min-passes 3 --chunk $chunk/10 -j ${task.cpus}
+			ccs $bam $reads --min-passes ${params.min_passes} --min-length=${params.min_length} --chunk $chunk/10 -j ${task.cpus}
 			mv *ccs_report.txt $report
 		"""
 
@@ -84,7 +88,7 @@ if (params.hifi) {
 
 	process CcsMerge {
 
-	        // publishDir "${params.outdir}/${sample}/CCS", mode: 'copy'
+	        publishDir "${params.outdir}/${sample}/CCS", mode: 'copy'
 
 		input:
 		set val(sample),file(read_chunks) from ReadChunksGrouped
