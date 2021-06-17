@@ -53,6 +53,8 @@ if (!params.bam) {
 if (params.hifi) {
 
 	process BamToCCS {
+		
+		scratch true
 
 		publishDir "${params.outdir}/${sample}/CCS", mode: 'copy',
 			saveAs: { filename ->
@@ -88,6 +90,8 @@ if (params.hifi) {
 
 	process CcsMerge {
 
+		scratch true 
+
 	        publishDir "${params.outdir}/${sample}/CCS", mode: 'copy'
 
 		input:
@@ -97,8 +101,10 @@ if (params.hifi) {
 		set val(sample),file(bam),file(pbi) into mergedReads
 
 		script:
-		bam = sample + ".reads.ccs.bam"
+		bam = sample + "." + params.min_passes + "_min_passes" + "." + params.min_length + "_min_length.reads.ccs.bam"
 		pbi = bam + ".pbi"
+
+		
 
 		"""
 			pbmerge -o $bam $read_chunks
