@@ -2,6 +2,14 @@
 
 Preprocessing of Pacbio subread data for delivery to customers
 
+# How to run
+
+To run this pipeline, you need to have a recent version of Nextflow installed as well as Singularity, >= 3.0
+
+Basic command: `nextflow run ikmb/pacbio-preprocess --bam /path/to/my.subreads.bam`
+
+For more options, see below:
+
 ## Run options
 
 ### `--bam` 
@@ -34,5 +42,8 @@ Minimum length a read must have after polishing. Requires "--hifi"
 
 Maximum length a read can have after polishing. Requires "--hifi". 
 
+### `-profile` 
+
+For the IKMB MedCluster, this option can be ignored. To run the pipeline on the IKMB diagnostics cluster, use `-profile diagnostic`.
 
 
