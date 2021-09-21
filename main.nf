@@ -11,18 +11,24 @@ Pacbio Preprocessing
 def helpMessage() {
   log.info"""
 ======================================
->> Processing of PacBio reads <<
+>> Processing of PacBio reads<<
 ======================================
 
 Usage:
 
 A typical command to run this pipeline would be:
 
-nextflow run ikmb/pacbio-preprocessing --bam movie.bam --qc --demux --ccs
+nextflow run ikmb/pacbio-preprocessing --bam movie.bam --qc --demux --hifi
 
 Mandatory arguments:
 
---bam			A PacBio movie file in BAM format
+--bam			A PacBio movie file in BAM format. 
+
+Optional arguments (at least one of):
+
+--hifi			Whether to make HiFi reads (default is false)
+--qc			Whether to run QC on the subreads
+--demux			Whether to perform demuxing with LIMA (default is false)
 
 """.stripIndent()
 }
@@ -34,10 +40,21 @@ if (params.help){
 }
 
 // Barcode file
-barcodes = file("$baseDir/assets/Sequel_16_Barcodes_v3.fasta")
+barcodes_ref_fa = file("$baseDir/assets/Sequel_16_Barcodes_v3.fasta")
 
 // Enables splitting of CCS read generation into 10 parallel processes
 def chunks = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
+
+// Fasta file with barcodes for demuxing
+if (params.barcodes) {
+	Channel.fromPath(params.barcodes)
+	.fEmpty { exit 1, "Could not find the barcode fasta file...please check the path." }
+	.set { barcodes }
+} else {
+	Channel.fromPath(barcodes_ref_fa)
+	.fEmpty { exit 1, "Could not find the built-in barcode fasta file...this should not happen!" }
+        .set { barcodes }
+}
 
 if (!params.bam) {
 	exit 1, "Must provide a BAM movie file (--bam)"
@@ -145,11 +162,12 @@ if (params.demux) {
 
 		input:
 		set val(sample),file(bam),file(pbi) from HiFiBam
+		file(barcode_fa) from barcodes.collect()
 
 		output:
 		set val(sample),file("*-*.bam") into final_bams
 		set val(sample),file("*.lima.*") into lima_reports
-
+		
 		script:
 		def options = ""
 		if (params.hifi) {
@@ -171,6 +189,8 @@ if (params.demux) {
 if (params.qc) {
 
 	process bam2fasta {
+
+		publishDir "${params.outdir}/${sample}/Fasta", mode: 'copy' 
 
 		input:
 		set val(sample),file(bam),file(pbi) from bamQC
