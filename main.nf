@@ -224,7 +224,7 @@ if (params.qc) {
 
 		script:
 		fasta = bam.getBaseName() + ".fasta.gz"
-		base_name = bamgetBaseName()
+		base_name = bam.getBaseName()
 		"""
 			bam2fasta -o $base_name $bam
 		"""
