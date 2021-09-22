@@ -48,11 +48,11 @@ def chunks = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
 // Fasta file with barcodes for demuxing
 if (params.barcodes) {
 	Channel.fromPath(params.barcodes)
-	.fEmpty { exit 1, "Could not find the barcode fasta file...please check the path." }
+	.ifEmpty { exit 1, "Could not find the barcode fasta file...please check the path." }
 	.set { barcodes }
 } else {
 	Channel.fromPath(barcodes_ref_fa)
-	.fEmpty { exit 1, "Could not find the built-in barcode fasta file...this should not happen!" }
+	.ifEmpty { exit 1, "Could not find the built-in barcode fasta file...this should not happen!" }
         .set { barcodes }
 }
 
@@ -64,6 +64,30 @@ if (!params.bam) {
 		.ifEmpty { exit 1, "Could not find an input bam file" }
 		.map { b -> [ file(b).getBaseName(), file(b), file("${b}.pbi") ] }
 		.into { bamFile; bamQC }
+}
+
+// this is not finished yet, need to create a proper yaml file
+process get_software_versions {
+
+    publishDir "${params.outdir}/Summary/versions", mode: 'copy'
+
+    output:
+    file("v*.txt")
+    file(yaml_file) into software_versions_yaml
+
+    script:
+    yaml_file = "software_versions_mqc.yaml"
+
+    """
+    echo $workflow.manifest.version &> v_ikmb_pacbio-preprocess.txt
+    echo $workflow.nextflow.version &> v_nextflow.txt
+    bam2fasta --version &> v_bam2fasta.txt
+    lima --version &> v_lima.txt
+    extracthifi --version &> v_extracthifi.txt     
+    ccs --version &> v_ccs.txt
+    multiqc --version &> v_multiqc.txt
+    parse_versions.pl >  $yaml_file
+    """
 }
 
 // requested generation of HiFi reads
