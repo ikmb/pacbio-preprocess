@@ -47,7 +47,7 @@ def chunks = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
 
 // Fasta file with barcodes for demuxing
 if (params.barcodes) {
-	Channel.fromPath(params.barcodes)
+	Channel.fromPath(file(params.barcodes))
 	.ifEmpty { exit 1, "Could not find the barcode fasta file...please check the path." }
 	.set { barcodes }
 } else {
@@ -200,7 +200,7 @@ if (params.demux) {
 		demux = bam.getBaseName() + ".demux.bam"
 
 		"""
-			lima $bam $barcodes $demux --same $options --split
+			lima $bam $barcode_fa $demux --same $options --split
 		"""
 
 	}
@@ -224,9 +224,9 @@ if (params.qc) {
 
 		script:
 		fasta = bam.getBaseName() + ".fasta.gz"
-
+		base_name = bamgetBaseName()
 		"""
-			bam2fasta -o ${bam.getBaseName()} $bam
+			bam2fasta -o $base_name $bam
 		"""
 		
 	}
