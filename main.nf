@@ -27,6 +27,7 @@ Mandatory arguments:
 Optional arguments (at least one of):
 
 --hifi			Whether to make HiFi reads (default is false)
+--hifi_extract		BAM file is a ensemble BAM file with multiple read types
 --qc			Whether to run QC on the subreads
 --demux			Whether to perform demuxing with LIMA (default is false)
 
@@ -44,6 +45,11 @@ barcodes_ref_fa = file("$baseDir/assets/Sequel_16_Barcodes_v3.fasta")
 
 // Enables splitting of CCS read generation into 10 parallel processes
 def chunks = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
+
+// Sanity control
+if (params.hifi && params.hifi_extract) {
+	exit 1, "HiFi Read Processing: Either your BAM file is already CCS converted (--hifi-extract) or not (--hifi). Cannot be both."
+}
 
 // Fasta file with barcodes for demuxing
 if (params.barcodes) {
@@ -63,7 +69,7 @@ if (!params.bam) {
 		.fromPath(params.bam)
 		.ifEmpty { exit 1, "Could not find an input bam file" }
 		.map { b -> [ file(b).getBaseName(), file(b), file("${b}.pbi") ] }
-		.into { bamFile; bamQC }
+		.set { bamFile }
 }
 
 // this is not finished yet, need to create a proper yaml file
@@ -139,7 +145,7 @@ if (params.hifi) {
 		set val(sample),file(read_chunks) from ReadChunksGrouped
 
 		output:
-		set val(sample),file(bam),file(pbi) into mergedReads
+		set val(sample),file(bam),file(pbi) into mergedBam
 
 		script:
 		bam = sample + "." + params.min_passes + "_min_passes" + "." + params.min_length + "_min_length.reads.ccs.bam"
@@ -153,29 +159,36 @@ if (params.hifi) {
 		"""
 	}
 
-	process GetHiFiReads {
+} else {
+	mergedBam = bamFile
+}
+
+if (params.hifi || params.hifi_extract) {
+
+	        process GetHiFiReads {
 
                 publishDir "${params.outdir}/${sample}/HiFi", mode: 'copy'
 
-		input:
-		set val(sample),file(bam),file(pbi) from mergedReads
+                input:
+                set val(sample),file(bam),file(pbi) from mergedBam
 
-		output:
-		set val(sample),file(hifi),file(hifi_pbi) into HiFiBam
+                output:
+                set val(sample),file(hifi),file(hifi_pbi) into (HiFiBam, bamQC)
 
-		script:
-		hifi = bam.getBaseName() + ".hifi.bam"
-		hifi_pbi = hifi + ".pbi"
+                script:
+                hifi = bam.getBaseName() + ".hifi.bam"
+                hifi_pbi = hifi + ".pbi"
 
-		"""
-			extracthifi $bam $hifi
-			pbindex $hifi
-		"""
+                """
+                        extracthifi $bam $hifi
+                        pbindex $hifi
+                """
 
-	}
+        }
 
 } else {
-	HiFiBam = bamFile
+	mergedBam.into { HiFiBam; bamQC }
+		
 }
 
 if (params.demux) {
@@ -194,13 +207,13 @@ if (params.demux) {
 		
 		script:
 		def options = ""
-		if (params.hifi) {
+		if (params.hifi || params.extract-hifi) {
 			options = "--ccs --min-score 80"
 		}
 		demux = bam.getBaseName() + ".demux.bam"
-
 		"""
 			lima $bam $barcode_fa $demux --same $options --split
+			pbindex $demux
 		"""
 
 	}
