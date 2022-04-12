@@ -212,7 +212,7 @@ if (params.demux) {
 		}
 		demux = bam.getBaseName() + ".demux.bam"
 		"""
-			lima $bam $barcode_fa $demux --same $options --split
+			lima $bam $barcode_fa $demux --same $options --split-named
 			pbindex $demux
 		"""
 
