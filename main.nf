@@ -48,7 +48,7 @@ def chunks = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
 
 // Sanity control
 if (params.hifi && params.hifi_extract) {
-	exit 1, "HiFi Read Processing: Either your BAM file is already CCS converted (--hifi-extract) or not (--hifi). Cannot be both."
+	exit 1, "HiFi Read Processing: Either your BAM file is already CCS converted (--hifi_extract) or not (--hifi). Cannot be both."
 }
 
 // Fasta file with barcodes for demuxing
@@ -207,9 +207,9 @@ if (params.demux) {
 		
 		script:
 		def options = ""
-		if (params.hifi || params.extract-hifi) {
-			options = "--ccs --min-score 80"
-		}
+		if (params.hifi || params.hifi_extract) {
+			options = "--hifi-preset SYMMETRIC"
+		}	
 		demux = bam.getBaseName() + ".demux.bam"
 		"""
 			lima $bam $barcode_fa $demux --same $options --split-named

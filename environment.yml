@@ -10,7 +10,7 @@ dependencies:
   - bioconda::pbbam
   - bioconda::bam2fastx
   - bioconda::pbccs=6.0.0
-  - bioconda::lima=2.0.0
+  - bioconda::lima=2.5.0
   - bioconda::nanoplot=1.38.0
   - bioconda::fastqc
   - bioconda::multiqc=1.9
