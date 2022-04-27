@@ -100,6 +100,8 @@ process get_software_versions {
 if (params.hifi) {
 
 	process BamToCCS {
+
+		label 'pbccs'
 		
 		scratch true
 
@@ -137,6 +139,8 @@ if (params.hifi) {
 
 	process CcsMerge {
 
+		label 'pbbam'
+
 		scratch true 
 
 	        publishDir "${params.outdir}/${sample}/CCS", mode: 'copy'
@@ -165,26 +169,47 @@ if (params.hifi) {
 
 if (params.hifi || params.hifi_extract) {
 
-	        process GetHiFiReads {
+	process GetHiFiReads {
 
-                publishDir "${params.outdir}/${sample}/HiFi", mode: 'copy'
+		label 'extracthifi'	
 
-                input:
+               	publishDir "${params.outdir}/${sample}/HiFi", mode: 'copy'
+
+	        input:
                 set val(sample),file(bam),file(pbi) from mergedBam
 
-                output:
-                set val(sample),file(hifi),file(hifi_pbi) into (HiFiBam, bamQC)
+               	output:
+	        set val(sample),file(hifi) into ExtractedBam
 
                 script:
-                hifi = bam.getBaseName() + ".hifi.bam"
-                hifi_pbi = hifi + ".pbi"
-
+              	hifi = bam.getBaseName() + ".hifi.bam"
+	        hifi_pbi = hifi + ".pbi"
+	
                 """
-                        extracthifi $bam $hifi
-                        pbindex $hifi
-                """
+               	        extracthifi $bam $hifi
+	        """
 
         }
+
+	process IndexBam {
+
+		label 'pbbam'
+
+		input:
+		set val(sample),file(hifi) from ExtractedBam
+
+		output:
+                set val(sample),file(hifi),file(hifi_pbi) into (HiFiBam, bamQC)
+
+		script:
+
+		hifi_pbi = hifi + ".pbi"
+
+		"""
+			pbindex $hifi
+		"""
+
+	}
 
 } else {
 	mergedBam.into { HiFiBam; bamQC }
@@ -194,6 +219,8 @@ if (params.hifi || params.hifi_extract) {
 if (params.demux) {
 
 	process PbDemux {
+
+		label 'lima'
 
 		publishDir "${params.outdir}/${sample}/Demux", mode: 'copy'
 
@@ -213,7 +240,6 @@ if (params.demux) {
 		demux = bam.getBaseName() + ".demux.bam"
 		"""
 			lima $bam $barcode_fa $demux --same $options --split-named
-			pbindex $demux
 		"""
 
 	}
@@ -226,6 +252,8 @@ if (params.demux) {
 if (params.qc) {
 
 	process bam2fasta {
+
+		label 'bam2fastx'
 
 		publishDir "${params.outdir}/${sample}/Fasta", mode: 'copy' 
 
@@ -245,6 +273,8 @@ if (params.qc) {
 	}
 
 	process nanoplot {
+
+		label 'nanoplot'
 
         	publishDir "${params.outdir}/${sample}/QC", mode: 'copy'
 
