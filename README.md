@@ -26,6 +26,10 @@ Whether to generate QC plots using Nanoplot.
 
 Whether to convert subreads into HiFi reads.
 
+### `--hifi_extract`[ true  | false (default) ]
+
+BAM file already contains HiFi reads, only extract them.
+
 ### `--demux` [ true | false (default) ]
 
 Whether to perform demuxing on the data. If "--hifi" is specified, demuxing is performed on the HiFi reads only. Otherwise, the raw subread file is used. 
